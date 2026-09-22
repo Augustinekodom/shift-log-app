@@ -1,0 +1,16 @@
+{
+  "short_name": "ShiftLog",
+  "name": "Traffic Management Shift Log & Invoice Tracker",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#17181A",
+  "theme_color": "#F5B700",
+  "display": "standalone",
+  "orientation": "portrait"
+}

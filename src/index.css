@@ -1,0 +1,209 @@
+:root {
+  --charcoal: #17181A;
+  --surface: #212327;
+  --surface-2: #2A2D31;
+  --border: #383B40;
+  --text: #EDEDEA;
+  --text-dim: #9A9DA2;
+  --amber: #F5B700;
+  --amber-hover: #E0A700;
+  --amber-glow: rgba(245, 183, 0, 0.15);
+  --orange: #E8590C;
+  --green: #4CAF6D;
+  --font-display: 'Oswald', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: #0d0e0f;
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #6b6e73;
+}
+
+/* Custom scrollbar for app content */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--charcoal);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
+}
+
+/* Responsive Layout Utilities */
+.app-shell-container {
+  font-family: var(--font-body);
+  background: var(--charcoal);
+  color: var(--text);
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+/* Mobile viewport constrained frame */
+.app-shell-mobile {
+  max-width: 480px;
+  margin: 16px auto;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  min-height: calc(100vh - 32px);
+}
+
+/* Wide Desktop view container */
+.app-shell-desktop {
+  max-width: 1240px;
+  margin: 0 auto;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  box-shadow: 0 0 60px rgba(0,0,0,0.5);
+}
+
+/* Desktop 2-Column Grids */
+.desktop-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .app-shell-container:not(.app-shell-mobile) .desktop-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .app-shell-container:not(.app-shell-mobile) .desktop-grid-shifts {
+    grid-template-columns: 380px 1fr;
+  }
+
+  .app-shell-container:not(.app-shell-mobile) .desktop-grid-agencies {
+    grid-template-columns: 360px 1fr;
+  }
+
+  .app-shell-container:not(.app-shell-mobile) .desktop-grid-invoices {
+    grid-template-columns: 420px 1fr;
+  }
+
+  .app-shell-container:not(.app-shell-mobile) .desktop-grid-settings {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Navigation visibility rules */
+.desktop-nav-tabs {
+  display: none;
+}
+
+.mobile-tab-bar {
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
+@media (min-width: 768px) {
+  .app-shell-container:not(.app-shell-mobile) .desktop-nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .app-shell-container:not(.app-shell-mobile) .mobile-tab-bar {
+    display: none;
+  }
+}
+
+/* Card hover animation on desktop */
+.card-hover {
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-hover:hover {
+  border-color: var(--amber);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+/* Print Stylesheet for Invoices */
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4 portrait;
+  }
+  
+  html, body {
+    background: white !important;
+    color: black !important;
+    height: auto !important;
+  }
+
+  #root {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .invoice-paper {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+  }
+}
