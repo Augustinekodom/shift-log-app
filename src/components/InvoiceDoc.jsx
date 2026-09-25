@@ -1,22 +1,94 @@
-import React from "react";
-import { Printer } from "lucide-react";
-import { formatDateDisplay, formatDateShort, gbp } from "../lib/helpers";
+import React, { useState, useEffect } from "react";
+import { Printer, Pencil, Check, X } from "lucide-react";
+import { formatDateDisplay, formatDateShort, gbp, num } from "../lib/helpers";
 
-export default function InvoiceDoc({ invoice, onBack, onTogglePaid }) {
+export default function InvoiceDoc({ invoice, onBack, onTogglePaid, onUpdateInvoice }) {
   const p = invoice.profileSnapshot || {};
   const a = invoice.agencySnapshot || {};
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [lineItems, setLineItems] = useState(invoice.lineItems || []);
+
+  useEffect(() => {
+    setLineItems(invoice.lineItems || []);
+  }, [invoice]);
+
+  const updateLineAmount = (idx, newAmount) => {
+    const next = [...lineItems];
+    next[idx] = { ...next[idx], amount: num(newAmount) };
+    setLineItems(next);
+  };
+
+  const updateLineDescription = (idx, newDesc) => {
+    const next = [...lineItems];
+    next[idx] = { ...next[idx], description: newDesc };
+    setLineItems(next);
+  };
+
+  const updateExtraAmount = (lineIdx, extraIdx, newAmount) => {
+    const next = [...lineItems];
+    const extras = [...(next[lineIdx].extras || [])];
+    extras[extraIdx] = { ...extras[extraIdx], amount: num(newAmount) };
+    next[lineIdx] = { ...next[lineIdx], extras };
+    setLineItems(next);
+  };
+
+  // Recalculate totals dynamically
+  const subtotal = lineItems.reduce((sum, li) => sum + num(li.amount), 0);
+  const extrasTotal = lineItems.reduce((sum, li) => sum + (li.extras || []).reduce((a, e) => a + num(e.amount), 0), 0);
+  const total = subtotal + extrasTotal;
+  const rate = invoice.cisRate ?? (p.cisRegistered ? 0.20 : 0.30);
+  const cisDeduction = total * rate;
+  const netPayable = total - cisDeduction;
+
+  const handleSaveAdjustments = () => {
+    const updatedInvoice = {
+      ...invoice,
+      lineItems,
+      subtotal,
+      extrasTotal,
+      total,
+      cisDeduction,
+      netPayable,
+    };
+    if (onUpdateInvoice) {
+      onUpdateInvoice(updatedInvoice);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEditing = () => {
+    setLineItems(invoice.lineItems || []);
+    setIsEditing(false);
+  };
 
   return (
     <div>
       <div className="no-print" style={styles.docToolbar}>
         <button style={styles.secondaryButton} onClick={onBack}>← Back</button>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button style={styles.secondaryButton} onClick={onTogglePaid}>
-            Mark {invoice.status === "paid" ? "unpaid" : "paid"}
-          </button>
-          <button style={styles.primaryButton} onClick={() => window.print()}>
-            <Printer size={15} /> Print / Save as PDF
-          </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {!isEditing ? (
+            <>
+              <button style={styles.secondaryButton} onClick={() => setIsEditing(true)}>
+                <Pencil size={15} /> Edit Rates & Amounts
+              </button>
+              <button style={styles.secondaryButton} onClick={onTogglePaid}>
+                Mark {invoice.status === "paid" ? "unpaid" : "paid"}
+              </button>
+              <button style={styles.primaryButton} onClick={() => window.print()}>
+                <Printer size={15} /> Print / Save as PDF
+              </button>
+            </>
+          ) : (
+            <>
+              <button style={styles.secondaryButton} onClick={handleCancelEditing}>
+                <X size={15} /> Cancel
+              </button>
+              <button style={styles.primaryButton} onClick={handleSaveAdjustments}>
+                <Check size={15} /> Save & Recalculate
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -75,18 +147,60 @@ export default function InvoiceDoc({ invoice, onBack, onTogglePaid }) {
             </tr>
           </thead>
           <tbody>
-            {invoice.lineItems.map((li, idx) => (
+            {lineItems.map((li, idx) => (
               <React.Fragment key={idx}>
                 <tr>
                   <td style={styles.td}>{formatDateShort(li.date)}</td>
-                  <td style={styles.td}>{li.description}</td>
-                  <td style={{ ...styles.td, textAlign: "right" }}>{gbp(li.amount)}</td>
+                  <td style={styles.td}>
+                    {!isEditing ? (
+                      li.description
+                    ) : (
+                      <input
+                        className="no-print"
+                        type="text"
+                        value={li.description}
+                        onChange={(e) => updateLineDescription(idx, e.target.value)}
+                        style={styles.editInputText}
+                      />
+                    )}
+                  </td>
+                  <td style={{ ...styles.td, textAlign: "right" }}>
+                    {!isEditing ? (
+                      gbp(li.amount)
+                    ) : (
+                      <div className="no-print" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 13 }}>£</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={li.amount}
+                          onChange={(e) => updateLineAmount(idx, e.target.value)}
+                          style={styles.editInputNum}
+                        />
+                      </div>
+                    )}
+                  </td>
                 </tr>
-                {li.extras.map((ex, exi) => (
+                {(li.extras || []).map((ex, exi) => (
                   <tr key={`${idx}-${exi}`}>
                     <td style={styles.td}></td>
                     <td style={{ ...styles.td, color: "#666", fontStyle: "italic" }}>{ex.label}</td>
-                    <td style={{ ...styles.td, textAlign: "right", color: "#666" }}>{gbp(ex.amount)}</td>
+                    <td style={{ ...styles.td, textAlign: "right", color: "#666" }}>
+                      {!isEditing ? (
+                        gbp(ex.amount)
+                      ) : (
+                        <div className="no-print" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 12 }}>£</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={ex.amount}
+                            onChange={(e) => updateExtraAmount(idx, exi, e.target.value)}
+                            style={styles.editInputNumSmall}
+                          />
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </React.Fragment>
@@ -95,22 +209,25 @@ export default function InvoiceDoc({ invoice, onBack, onTogglePaid }) {
         </table>
 
         <div style={styles.paperTotals}>
-          <div style={styles.paperTotalRow}><span>Subtotal</span><span>{gbp(invoice.subtotal)}</span></div>
-          {invoice.extrasTotal > 0 && (
-            <div style={styles.paperTotalRow}><span>Extras</span><span>{gbp(invoice.extrasTotal)}</span></div>
+          <div style={styles.paperTotalRow}><span>Subtotal</span><span>{gbp(subtotal)}</span></div>
+          {extrasTotal > 0 && (
+            <div style={styles.paperTotalRow}><span>Extras</span><span>{gbp(extrasTotal)}</span></div>
           )}
           <div style={{ ...styles.paperTotalRow, fontWeight: 600, color: "#1a1a1a", borderTop: "1px solid #ddd", marginTop: 4, paddingTop: 6 }}>
-            <span>Gross total</span><span>{gbp(invoice.total)}</span>
+            <span>Gross total</span><span>{gbp(total)}</span>
           </div>
           <div style={{ ...styles.paperTotalRow, color: "#b3480a" }}>
-            <span>CIS deduction ({Math.round((invoice.cisRate ?? 0) * 100)}%)</span>
-            <span>-{gbp(invoice.cisDeduction ?? 0)}</span>
+            <span>CIS deduction ({Math.round((rate ?? 0) * 100)}%)</span>
+            <span>-{gbp(cisDeduction ?? 0)}</span>
           </div>
-          <div style={{ ...styles.paperTotalRow, ...styles.paperGrandTotal }}><span>Net payable</span><span>{gbp(invoice.netPayable ?? invoice.total)}</span></div>
+          <div style={{ ...styles.paperTotalRow, ...styles.paperGrandTotal }}>
+            <span>Net payable</span>
+            <span style={{ color: isEditing ? "#E8590C" : "#1a1a1a" }}>{gbp(netPayable ?? total)}</span>
+          </div>
         </div>
 
         <div style={styles.paperCisNote}>
-          CIS deduction shown is calculated at the {invoice.profileSnapshot?.cisRegistered ? "20% registered subcontractor" : "30% unregistered subcontractor"} rate and withheld by the contractor under the Construction Industry Scheme.
+          CIS deduction shown is calculated at the {p.cisRegistered ? "20% registered subcontractor" : "30% unregistered subcontractor"} rate and withheld by the contractor under the Construction Industry Scheme.
         </div>
 
         {(p.bankName || p.accountNumber) && (
@@ -132,11 +249,11 @@ export default function InvoiceDoc({ invoice, onBack, onTogglePaid }) {
 const styles = {
   docToolbar: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" },
   primaryButton: {
-    display: "flex", alignItems: "center", gap: 6, background: "var(--amber)", color: "#1c1400", border: "none",
+    display: "inline-flex", alignItems: "center", gap: 6, background: "var(--amber)", color: "#1c1400", border: "none",
     borderRadius: 8, padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer",
   },
   secondaryButton: {
-    background: "transparent", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 8,
+    display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 8,
     padding: "9px 14px", fontWeight: 600, fontSize: 13.5, cursor: "pointer",
   },
   paper: {
@@ -161,4 +278,13 @@ const styles = {
   paperGrandTotal: { fontSize: 16, fontWeight: 700, color: "#1a1a1a", borderTop: "1.5px solid #1a1a1a", marginTop: 6, paddingTop: 8 },
   paperPayment: { padding: "0 22px 22px" },
   paperCisNote: { padding: "0 22px 20px", fontSize: 10.5, color: "#888", lineHeight: 1.5 },
+  editInputText: {
+    width: "100%", padding: "4px 8px", border: "1px solid #ccc", borderRadius: 4, fontSize: 12.5, fontFamily: "var(--font-body)",
+  },
+  editInputNum: {
+    width: 90, padding: "4px 6px", border: "1px solid #ccc", borderRadius: 4, fontSize: 12.5, fontWeight: 600, textAlign: "right", fontFamily: "var(--font-mono)",
+  },
+  editInputNumSmall: {
+    width: 75, padding: "3px 5px", border: "1px solid #ccc", borderRadius: 4, fontSize: 11.5, textAlign: "right", fontFamily: "var(--font-mono)",
+  },
 };

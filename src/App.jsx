@@ -78,6 +78,11 @@ export default function App() {
     setInvoices([]);
   };
 
+  const handleUpdateInvoice = (updatedInvoice) => {
+    const next = invoices.map((inv) => (inv.id === updatedInvoice.id ? updatedInvoice : inv));
+    saveInvoices(next);
+  };
+
   if (loading) {
     return (
       <div style={styles.loadingScreen}>
@@ -103,6 +108,7 @@ export default function App() {
             );
             saveInvoices(next);
           }}
+          onUpdateInvoice={handleUpdateInvoice}
         />
       ) : (
         <>
